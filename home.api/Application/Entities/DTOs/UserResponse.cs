@@ -1,14 +1,16 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System.Text.Json.Serialization;
-
-namespace home.api.Domain.Entities
+﻿namespace home.api.Application.Entities.DTOs
 {
     /// <summary>
-    /// Usuário da aplicação, estendendo o Identity
+    /// DTO de saída do usuário
     /// </summary>
-    public class User : IdentityUser<Guid>
+    public class UserResponse
     {
         #region Properties
+
+        /// <summary>
+        /// Identificador do usuário
+        /// </summary>
+        public Guid Id { get; set; }
 
         /// <summary>
         /// Primeiro nome
@@ -19,6 +21,16 @@ namespace home.api.Domain.Entities
         /// Sobrenome
         /// </summary>
         public string? LastName { get; set; }
+
+        /// <summary>
+        /// Nome de exibição
+        /// </summary>
+        public string UserName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// E-mail
+        /// </summary>
+        public string Email { get; set; } = string.Empty;
 
         /// <summary>
         /// Data de nascimento
@@ -39,13 +51,6 @@ namespace home.api.Domain.Entities
         /// Data da última alteração
         /// </summary>
         public DateTime? LastUpdatedAt { get; set; }
-
-        #endregion
-
-        #region Navigations
-
-        [JsonIgnore]
-        public ICollection<Home>? Homes { get; set; }
 
         #endregion
     }

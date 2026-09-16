@@ -1,4 +1,5 @@
 ﻿using home.api.Domain.Interfaces.Entities;
+using System.Text.Json.Serialization;
 
 namespace home.api.Domain.Entities
 {
@@ -6,20 +7,20 @@ namespace home.api.Domain.Entities
     {
         #region Fields
 
-        /// <summary>
-        /// Identify
-        /// </summary>
         public Guid Id { get; set; }
 
-        /// <summary>
-        /// When was created
-        /// </summary>
+        public Guid UserId { get; set; }
+
         public DateTime CreatedAt { get; set; }
 
-        /// <summary>
-        /// When was updated
-        /// </summary>
         public DateTime? LastUpdatedAt { get; set; }
+
+        #endregion
+
+        #region Navigation
+
+        [JsonIgnore]
+        public User? User { get; set; }
 
         #endregion
     }

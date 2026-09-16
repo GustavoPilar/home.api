@@ -12,8 +12,8 @@ using home.api.Infra.Db;
 namespace home.api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260915193508_first_migrations")]
-    partial class first_migrations
+    [Migration("20260916194301_add_home_entity")]
+    partial class add_home_entity
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -156,6 +156,44 @@ namespace home.api.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("home.api.Domain.Entities.Home", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("RAW(16)");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(150)
+                        .HasColumnType("NVARCHAR2(150)");
+
+                    b.Property<int?>("AddressNumber")
+                        .HasColumnType("NUMBER(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMP(7)");
+
+                    b.Property<DateTime?>("LastUpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("NVARCHAR2(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("RAW(16)");
+
+                    b.Property<string>("ZipCode")
+                        .HasMaxLength(8)
+                        .HasColumnType("NVARCHAR2(8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Homes");
+                });
+
             modelBuilder.Entity("home.api.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -187,10 +225,12 @@ namespace home.api.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("NVARCHAR2(2000)");
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR2(50)");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("NVARCHAR2(2000)");
+                        .HasMaxLength(30)
+                        .HasColumnType("NVARCHAR2(30)");
 
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("TIMESTAMP(7)");
@@ -290,6 +330,22 @@ namespace home.api.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("home.api.Domain.Entities.Home", b =>
+                {
+                    b.HasOne("home.api.Domain.Entities.User", "User")
+                        .WithMany("Homes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("home.api.Domain.Entities.User", b =>
+                {
+                    b.Navigation("Homes");
                 });
 #pragma warning restore 612, 618
         }

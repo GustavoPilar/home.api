@@ -1,14 +1,25 @@
+﻿using home.api.Application.Entities;
+using home.api.Application.Entities.DTOs;
+using home.api.Application.Interfaces;
+using home.api.Application.Mappers;
+using home.api.Application.Services;
 using home.api.Domain.Entities;
 using home.api.Infra.Db;
+using home.api.Infra.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// A aplicação não sobe sem a chave de assinatura: falhar aqui é melhor do que emitir token inválido
+string secretKey = builder.Configuration["JWT:SecretKey"]
+    ?? throw new InvalidOperationException("A configuração JWT:SecretKey não foi definida.");
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -24,9 +35,48 @@ builder.Services.AddIdentityCore<User>(options =>
     .AddSignInManager()
     .AddEntityFrameworkStores<AppDbContext>();
 
-var app = builder.Build();
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
 
-// Configure the HTTP request pipeline.
+#region Dependency Injection
+
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<UnitOfWork>();
+
+// Mapeadores: mantêm a conversão DTO/entidade fora dos serviços
+builder.Services.AddScoped<IUserMapper, UserMapper>();
+builder.Services.AddScoped<IMapperBase<Home, HomeRequest, HomeUpdate, HomeResponse>, HomeMapper>();
+
+// Serviços
+builder.Services.AddScoped<IHomeService, HomeService>();
+
+#endregion
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["JWT:Issuer"],
+
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["JWT:Audience"],
+
+            ValidateLifetime = true,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        };
+    });
+
+builder.Services.AddAuthorizationBuilder()
+    .SetDefaultPolicy(
+        new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
+
+WebApplication app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -34,6 +84,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
