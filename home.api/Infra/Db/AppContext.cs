@@ -15,6 +15,8 @@ namespace home.api.Infra.Db
 
         public DbSet<UserFamily> UserFamilies { get; set; } = default!;
 
+        public DbSet<FamilyTitle> FamilyTitles { get; set; } = default!;
+
         #endregion
 
         #region Members :: OnModelCreating()

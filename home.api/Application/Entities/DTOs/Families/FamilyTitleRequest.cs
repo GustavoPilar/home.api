@@ -1,12 +1,12 @@
 ﻿using home.api.Utilities;
 using System.ComponentModel.DataAnnotations;
 
-namespace home.api.Application.Entities.DTOs
+namespace home.api.Application.Entities.DTOs.Families
 {
     /// <summary>
-    /// DTO de criação da família
+    /// DTO de criação de um título próprio da família
     /// </summary>
-    public class FamilyRequest
+    public class FamilyTitleRequest
     {
         #region Properties
 
@@ -14,11 +14,6 @@ namespace home.api.Application.Entities.DTOs
         [Length(2, 50, ErrorMessage = "Quantidade entre 2 e 50 caracteres.")]
         [RegularExpression(Global.REGEX_DEFAULT, ErrorMessage = "Insira caracteres válidos.")]
         public string Name { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Demais membros da família. Quem cria já entra como membro automaticamente.
-        /// </summary>
-        public ICollection<Guid>? Members { get; set; }
 
         #endregion
     }

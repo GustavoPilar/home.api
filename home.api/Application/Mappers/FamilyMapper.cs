@@ -1,15 +1,15 @@
-﻿using home.api.Application.Entities.DTOs;
+﻿using home.api.Application.Entities.DTOs.Families;
 using home.api.Application.Interfaces;
 using home.api.Domain.Entities;
 
 namespace home.api.Application.Mappers
 {
     /// <summary>
-    /// Mapeamento entre a entidade Family e os seus DTOs
+    /// Mapeamento entre as entidades de família e os seus DTOs
     /// </summary>
     public class FamilyMapper : IFamilyMapper
     {
-        #region Members :: ToEntity(), ApplyChanges(), ToResponse(), ToResponseList()
+        #region Members :: Família
 
         /// <summary>
         /// Converte o DTO de criação em uma nova família.
@@ -50,14 +50,20 @@ namespace home.api.Application.Mappers
         {
             ArgumentNullException.ThrowIfNull(entity);
 
-            List<Guid> members = new List<Guid>();
+            List<FamilyMemberResponse> members = new List<FamilyMemberResponse>();
 
             // As associações podem não ter sido carregadas: nesse caso a lista sai vazia, nunca nula
             if (entity.UserFamilies is not null)
             {
                 foreach (UserFamily userFamily in entity.UserFamilies)
                 {
-                    members.Add(userFamily.UserId);
+                    members.Add(new FamilyMemberResponse
+                    {
+                        UserId = userFamily.UserId,
+                        FamilyTitleId = userFamily.FamilyTitleId,
+                        FamilyTitleName = userFamily.FamilyTitle?.Name,
+                        Role = userFamily.Role
+                    });
                 }
             }
 
@@ -85,6 +91,78 @@ namespace home.api.Application.Mappers
             foreach (Family entity in entities)
             {
                 responses.Add(this.ToResponse(entity));
+            }
+
+            return responses;
+        }
+
+        #endregion
+
+        #region Members :: Títulos
+
+        /// <summary>
+        /// Converte o DTO de criação em um novo título, sem identidade nem família
+        /// </summary>
+        /// <param name="request">DTO de criação</param>
+        /// <exception cref="ArgumentNullException">Requisição nula</exception>
+        public FamilyTitle ToTitleEntity(FamilyTitleRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            return new FamilyTitle
+            {
+                Name = request.Name
+            };
+        }
+
+        /// <summary>
+        /// Aplica as alterações do DTO sobre o título rastreado
+        /// </summary>
+        /// <param name="request">DTO de atualização</param>
+        /// <param name="entity">Título rastreado</param>
+        /// <exception cref="ArgumentNullException">Requisição ou título nulo</exception>
+        public void ApplyTitleChanges(FamilyTitleUpdate request, FamilyTitle entity)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(entity);
+
+            entity.Name = request.Name;
+        }
+
+        /// <summary>
+        /// Converte o título no DTO de saída
+        /// </summary>
+        /// <param name="entity">Título</param>
+        /// <exception cref="ArgumentNullException">Título nulo</exception>
+        public FamilyTitleResponse ToTitleResponse(FamilyTitle entity)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+
+            return new FamilyTitleResponse
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                FamilyId = entity.FamilyId,
+                IsGlobal = entity.FamilyId is null,
+                CreatedAt = entity.CreatedAt,
+                LastUpdatedAt = entity.LastUpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Converte uma coleção reaproveitando o mapeamento unitário (DRY)
+        /// </summary>
+        /// <param name="entities">Coleção de títulos</param>
+        /// <exception cref="ArgumentNullException">Coleção nula</exception>
+        public IEnumerable<FamilyTitleResponse> ToTitleResponseList(IEnumerable<FamilyTitle> entities)
+        {
+            ArgumentNullException.ThrowIfNull(entities);
+
+            List<FamilyTitleResponse> responses = new List<FamilyTitleResponse>();
+
+            foreach (FamilyTitle entity in entities)
+            {
+                responses.Add(this.ToTitleResponse(entity));
             }
 
             return responses;

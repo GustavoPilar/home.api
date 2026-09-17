@@ -1,6 +1,6 @@
 ﻿using home.api.Application.Entities.DTOs.Base;
 
-namespace home.api.Application.Entities.DTOs
+namespace home.api.Application.Entities.DTOs.Families
 {
     /// <summary>
     /// DTO de saída da família. Não expõe proprietário: família é compartilhada.
@@ -15,9 +15,9 @@ namespace home.api.Application.Entities.DTOs
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// Identificadores dos membros da família
+        /// Membros da família, com título e papel
         /// </summary>
-        public ICollection<Guid> Members { get; set; } = new List<Guid>();
+        public ICollection<FamilyMemberResponse> Members { get; set; } = new List<FamilyMemberResponse>();
 
         #endregion
     }

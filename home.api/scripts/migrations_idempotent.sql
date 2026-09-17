@@ -410,3 +410,133 @@ END;
 
 /
 
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'ALTER TABLE "Homes" ADD "FamilyId" RAW(16)'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    BEGIN 
+    EXECUTE IMMEDIATE 'CREATE TABLE 
+    "Families" (
+        "Id" RAW(16) NOT NULL,
+        "Name" NVARCHAR2(150) NOT NULL,
+        "CreatedAt" TIMESTAMP(7) NOT NULL,
+        "LastUpdatedAt" TIMESTAMP(7),
+        CONSTRAINT "PK_Families" PRIMARY KEY ("Id")
+    )';
+    END;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    BEGIN 
+    EXECUTE IMMEDIATE 'CREATE TABLE 
+    "UserFamilies" (
+        "Id" RAW(16) NOT NULL,
+        "FamilyId" RAW(16) NOT NULL,
+        "CreatedAt" TIMESTAMP(7) NOT NULL,
+        "LastUpdatedAt" TIMESTAMP(7),
+        "UserId" RAW(16) NOT NULL,
+        CONSTRAINT "PK_UserFamilies" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_UserFamilies_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+        CONSTRAINT "FK_UserFamilies_Families_FamilyId" FOREIGN KEY ("FamilyId") REFERENCES "Families" ("Id") ON DELETE CASCADE
+    )';
+    END;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE INDEX "IX_Homes_FamilyId" ON "Homes" ("FamilyId")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE INDEX "IX_UserFamilies_FamilyId" ON "UserFamilies" ("FamilyId")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE UNIQUE INDEX "IX_UserFamilies_UserId_FamilyId" ON "UserFamilies" ("UserId", "FamilyId")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'ALTER TABLE "Homes" ADD CONSTRAINT "FK_Homes_Families_FamilyId" FOREIGN KEY ("FamilyId") REFERENCES "Families" ("Id") ON DELETE SET NULL'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917143759_add_family_and_shared_home';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES (N''20260917143759_add_family_and_shared_home'', N''10.0.12'')'
+    ;
+ END IF;
+END;
+
+/
+

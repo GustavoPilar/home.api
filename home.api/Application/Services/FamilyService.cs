@@ -1,6 +1,7 @@
-﻿using home.api.Application.Entities.DTOs;
+﻿using home.api.Application.Entities.DTOs.Families;
 using home.api.Application.Interfaces;
 using home.api.Domain.Entities;
+using home.api.Domain.Enums;
 using home.api.Domain.Interfaces.Repositories;
 using home.api.Exceptions;
 using home.api.Infra.Repositories;
@@ -9,8 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace home.api.Application.Services
 {
     /// <summary>
-    /// Serviço de famílias. Todo acesso é decidido pela associação UserFamily,
-    /// para que qualquer membro — e não apenas quem criou — enxergue a família.
+    /// Serviço de famílias. A leitura é decidida pela associação UserFamily,
+    /// para que qualquer membro enxergue a família; a escrita é restrita ao host.
     /// </summary>
     public class FamilyService(
         UnitOfWork unitOfWork,
@@ -26,7 +27,7 @@ namespace home.api.Application.Services
 
         #endregion
 
-        #region Members :: GetEntitiesAsync(), GetEntityByIdAsync(), CreateEntityAsync(), UpdateEntityAsync(), DeleteEntityAsync()
+        #region Members :: Família
 
         /// <summary>
         /// Lista as famílias das quais o usuário é membro
@@ -59,12 +60,12 @@ namespace home.api.Application.Services
         }
 
         /// <summary>
-        /// Cria a família e associa o criador, além dos membros informados
+        /// Cria a família, associa o autor como host e vincula os demais membros
         /// </summary>
         /// <param name="userId">Usuário ID, obtido do token</param>
         /// <param name="request">DTO de criação</param>
         /// <exception cref="ArgumentNullException">Requisição nula</exception>
-        /// <exception cref="ArgumentException">Usuário ID inválido</exception>
+        /// <exception cref="ArgumentException">Usuário ID ou título inválido</exception>
         /// <exception cref="PersistenceException">Falha ao persistir</exception>
         public async Task<FamilyResponse> CreateEntityAsync(Guid userId, FamilyRequest request)
         {
@@ -77,24 +78,38 @@ namespace home.api.Application.Services
             family.CreatedAt = DateTime.UtcNow;
             family.LastUpdatedAt = null;
 
+            Dictionary<Guid, FamilyMemberRequest> desired = this.BuildDesiredMembers(request.Members);
+
+            // O autor é sempre host: sem isso ele perderia o controle do que acabou de criar
+            desired[userId] = new FamilyMemberRequest
+            {
+                UserId = userId,
+                FamilyTitleId = desired.TryGetValue(userId, out FamilyMemberRequest? own) ? own.FamilyTitleId : null,
+                Role = MembershipRole.Host
+            };
+
+            // Família recém-criada ainda não tem títulos próprios: só os globais são válidos
+            await this.EnsureTitlesAreAvailableAsync(family.Id, desired.Values);
+
             this.familyRepository.AddFamily(family);
 
-            // O criador entra sempre, senão ele mesmo perderia acesso ao que acabou de criar
             List<UserFamily> members = new List<UserFamily>();
 
-            foreach (Guid memberId in this.BuildMemberIds(userId, request.Members))
+            foreach (FamilyMemberRequest member in desired.Values)
             {
-                UserFamily member = this.CreateMember(family.Id, memberId);
+                UserFamily association = this.CreateMember(family.Id, member);
 
-                this.familyRepository.AddMember(member);
-                members.Add(member);
+                this.familyRepository.AddMember(association);
+                members.Add(association);
             }
 
             family.UserFamilies = members;
 
             await this.PersistAsync("criar", family.Id, userId);
 
-            return this.mapper.ToResponse(family);
+            Family? created = await this.familyRepository.GetByIdForMemberAsync(userId, family.Id);
+
+            return this.mapper.ToResponse(created ?? family);
         }
 
         /// <summary>
@@ -103,14 +118,17 @@ namespace home.api.Application.Services
         /// <param name="userId">Usuário ID, obtido do token</param>
         /// <param name="request">DTO de atualização</param>
         /// <exception cref="ArgumentNullException">Requisição nula</exception>
-        /// <exception cref="ArgumentException">Identificador inválido</exception>
-        /// <exception cref="EntityNotFoundException">Família inexistente ou de outro grupo</exception>
+        /// <exception cref="ArgumentException">Identificador ou título inválido</exception>
+        /// <exception cref="EntityNotFoundException">Família inexistente ou fora do alcance</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
         /// <exception cref="PersistenceException">Falha ao persistir</exception>
         public async Task<FamilyResponse> UpdateEntityAsync(Guid userId, FamilyUpdate request)
         {
             ArgumentNullException.ThrowIfNull(request);
             this.ValidateId(userId, nameof(userId));
             this.ValidateId(request.Id, nameof(request));
+
+            await this.EnsureHostAsync(userId, request.Id);
 
             Family? family = await this.familyRepository.GetByIdForMemberAsync(userId, request.Id);
 
@@ -122,7 +140,7 @@ namespace home.api.Application.Services
             family.LastUpdatedAt = DateTime.UtcNow;
 
             if (request.Members is not null)
-                await this.SyncMembersAsync(family, userId, request.Members);
+                await this.SyncMembersAsync(family, request.Members);
 
             await this.PersistAsync("atualizar", family.Id, userId);
 
@@ -132,16 +150,25 @@ namespace home.api.Application.Services
         }
 
         /// <summary>
-        /// Remove a família; as associações caem por cascata
+        /// Remove a família; associações e títulos próprios caem por cascata
         /// </summary>
         /// <param name="userId">Usuário ID, obtido do token</param>
         /// <param name="familyId">Família ID</param>
         /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
         /// <exception cref="PersistenceException">Falha ao persistir</exception>
         public async Task<bool> DeleteEntityAsync(Guid userId, Guid familyId)
         {
             this.ValidateId(userId, nameof(userId));
             this.ValidateId(familyId, nameof(familyId));
+
+            UserFamily? membership = await this.familyRepository.GetMembershipAsync(userId, familyId);
+
+            if (membership is null)
+                return false;
+
+            if (membership.Role != MembershipRole.Host)
+                throw new ForbiddenOperationException("Apenas o host pode excluir a família.");
 
             Family? family = await this.familyRepository.GetByIdForMemberAsync(userId, familyId);
 
@@ -155,19 +182,275 @@ namespace home.api.Application.Services
             return true;
         }
 
+        /// <summary>
+        /// Remove o próprio usuário da família, transferindo o comando quando necessário
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="request">Indicação do novo host</param>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Saída deixaria a família sem host</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<bool> LeaveAsync(Guid userId, Guid familyId, FamilyLeaveRequest? request)
+        {
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+
+            UserFamily? membership = await this.familyRepository.GetMembershipAsync(userId, familyId);
+
+            if (membership is null)
+                return false;
+
+            IEnumerable<UserFamily> members = await this.familyRepository.GetMembersAsync(familyId);
+
+            List<UserFamily> others = members.Where(x => x.UserId != userId).ToList();
+
+            if (membership.Role == MembershipRole.Host && !others.Any(x => x.Role == MembershipRole.Host))
+            {
+                if (others.Count == 0)
+                    throw new ForbiddenOperationException("Você é o único membro da família. Exclua a família em vez de sair dela.");
+
+                Guid? newHostId = request?.NewHostId;
+
+                if (newHostId is null || newHostId == Guid.Empty)
+                    throw new ForbiddenOperationException("Indique outro membro como host antes de sair da família.");
+
+                UserFamily? successor = others.FirstOrDefault(x => x.UserId == newHostId);
+
+                if (successor is null)
+                    throw new ForbiddenOperationException("O membro indicado como host não pertence a esta família.");
+
+                successor.Role = MembershipRole.Host;
+                successor.LastUpdatedAt = DateTime.UtcNow;
+
+                this.logger.LogInformation(
+                    "Host da família {FamilyId} transferido do usuário {UserId} para {NewHostId}.",
+                    familyId, userId, successor.UserId);
+            }
+
+            this.familyRepository.RemoveMember(membership);
+
+            await this.PersistAsync("sair da", familyId, userId);
+
+            return true;
+        }
+
         #endregion
 
-        #region Helpers :: SyncMembersAsync(), BuildMemberIds(), CreateMember(), PersistAsync(), ValidateId()
+        #region Members :: Títulos
 
         /// <summary>
-        /// Ajusta as associações para refletir a lista informada
+        /// Lista os títulos disponíveis para a família
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="EntityNotFoundException">Usuário não é membro</exception>
+        public async Task<IEnumerable<FamilyTitleResponse>> GetTitlesAsync(Guid userId, Guid familyId)
+        {
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+
+            await this.EnsureMembershipAsync(userId, familyId);
+
+            IEnumerable<FamilyTitle> titles = await this.familyRepository.GetTitlesAsync(familyId);
+
+            return this.mapper.ToTitleResponseList(titles);
+        }
+
+        /// <summary>
+        /// Cria um título próprio da família
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="request">DTO de criação</param>
+        /// <exception cref="ArgumentNullException">Requisição nula</exception>
+        /// <exception cref="ArgumentException">Identificador inválido ou nome já usado</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<FamilyTitleResponse> CreateTitleAsync(Guid userId, Guid familyId, FamilyTitleRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            // O índice único não cobre os globais no Oracle, por isso a checagem aqui
+            if (await this.familyRepository.TitleNameExistsAsync(familyId, request.Name, null))
+                throw new ArgumentException("Já existe um título com esse nome disponível para a família.", nameof(request));
+
+            FamilyTitle title = this.mapper.ToTitleEntity(request);
+
+            title.Id = Guid.CreateVersion7();
+            title.FamilyId = familyId;
+            title.CreatedAt = DateTime.UtcNow;
+            title.LastUpdatedAt = null;
+
+            this.familyRepository.AddTitle(title);
+
+            await this.PersistAsync("criar o título da", familyId, userId);
+
+            return this.mapper.ToTitleResponse(title);
+        }
+
+        /// <summary>
+        /// Renomeia um título próprio da família
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="request">DTO de atualização</param>
+        /// <exception cref="ArgumentNullException">Requisição nula</exception>
+        /// <exception cref="ArgumentException">Identificador inválido ou nome já usado</exception>
+        /// <exception cref="EntityNotFoundException">Título inexistente</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host, ou título global</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<FamilyTitleResponse> UpdateTitleAsync(Guid userId, Guid familyId, FamilyTitleUpdate request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+            this.ValidateId(request.Id, nameof(request));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            FamilyTitle title = await this.EnsureOwnTitleAsync(familyId, request.Id);
+
+            if (await this.familyRepository.TitleNameExistsAsync(familyId, request.Name, title.Id))
+                throw new ArgumentException("Já existe um título com esse nome disponível para a família.", nameof(request));
+
+            this.mapper.ApplyTitleChanges(request, title);
+
+            title.LastUpdatedAt = DateTime.UtcNow;
+
+            await this.PersistAsync("atualizar o título da", familyId, userId);
+
+            return this.mapper.ToTitleResponse(title);
+        }
+
+        /// <summary>
+        /// Remove um título próprio da família; quem o usava fica sem rótulo
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="titleId">Título ID</param>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host, ou título global</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<bool> DeleteTitleAsync(Guid userId, Guid familyId, Guid titleId)
+        {
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+            this.ValidateId(titleId, nameof(titleId));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            FamilyTitle? title = await this.familyRepository.GetTitleByIdAsync(titleId);
+
+            if (title is null || title.FamilyId != familyId)
+                return false;
+
+            this.familyRepository.RemoveTitle(title);
+
+            await this.PersistAsync("excluir o título da", familyId, userId);
+
+            return true;
+        }
+
+        #endregion
+
+        #region Helpers :: EnsureMembershipAsync(), EnsureHostAsync(), EnsureOwnTitleAsync(), EnsureTitlesAreAvailableAsync(), SyncMembersAsync(), BuildDesiredMembers(), CreateMember(), PersistAsync(), ValidateId()
+
+        /// <summary>
+        /// Garante que o usuário pertence à família
+        /// </summary>
+        /// <param name="userId">Usuário ID</param>
+        /// <param name="familyId">Família ID</param>
+        /// <exception cref="EntityNotFoundException">Usuário não é membro</exception>
+        private async Task<UserFamily> EnsureMembershipAsync(Guid userId, Guid familyId)
+        {
+            UserFamily? membership = await this.familyRepository.GetMembershipAsync(userId, familyId);
+
+            // Quem não é membro recebe "não encontrada", para não revelar a existência da família
+            if (membership is null)
+                throw new EntityNotFoundException("Família não encontrada.");
+
+            return membership;
+        }
+
+        /// <summary>
+        /// Garante que o usuário administra a família
+        /// </summary>
+        /// <param name="userId">Usuário ID</param>
+        /// <param name="familyId">Família ID</param>
+        /// <exception cref="ForbiddenOperationException">Usuário é membro comum</exception>
+        private async Task EnsureHostAsync(Guid userId, Guid familyId)
+        {
+            UserFamily membership = await this.EnsureMembershipAsync(userId, familyId);
+
+            if (membership.Role != MembershipRole.Host)
+                throw new ForbiddenOperationException("Apenas o host da família pode executar esta operação.");
+        }
+
+        /// <summary>
+        /// Garante que o título existe e pertence à própria família
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="titleId">Título ID</param>
+        /// <exception cref="EntityNotFoundException">Título inexistente</exception>
+        /// <exception cref="ForbiddenOperationException">Título global ou de outra família</exception>
+        private async Task<FamilyTitle> EnsureOwnTitleAsync(Guid familyId, Guid titleId)
+        {
+            FamilyTitle? title = await this.familyRepository.GetTitleByIdAsync(titleId);
+
+            if (title is null)
+                throw new EntityNotFoundException("Título não encontrado.");
+
+            if (title.FamilyId is null)
+                throw new ForbiddenOperationException("Títulos globais não podem ser alterados nem removidos.");
+
+            if (title.FamilyId != familyId)
+                throw new EntityNotFoundException("Título não encontrado.");
+
+            return title;
+        }
+
+        /// <summary>
+        /// Garante que todos os títulos referenciados são globais ou da própria família
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="members">Membros informados</param>
+        /// <exception cref="ArgumentException">Título indisponível para a família</exception>
+        private async Task EnsureTitlesAreAvailableAsync(Guid familyId, IEnumerable<FamilyMemberRequest> members)
+        {
+            List<Guid> titleIds = members
+                .Where(x => x.FamilyTitleId.HasValue)
+                .Select(x => x.FamilyTitleId!.Value)
+                .ToList();
+
+            if (!await this.familyRepository.TitlesAreAvailableAsync(familyId, titleIds))
+                throw new ArgumentException("Título indisponível para esta família.", nameof(members));
+        }
+
+        /// <summary>
+        /// Ajusta presença, título e papel para refletir a composição informada
         /// </summary>
         /// <param name="family">Família rastreada</param>
-        /// <param name="userId">Usuário que está alterando</param>
-        /// <param name="memberIds">Composição desejada</param>
-        private async Task SyncMembersAsync(Family family, Guid userId, ICollection<Guid> memberIds)
+        /// <param name="requested">Composição desejada</param>
+        /// <exception cref="ArgumentException">Composição vazia ou título inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Composição deixaria a família sem host</exception>
+        private async Task SyncMembersAsync(Family family, ICollection<FamilyMemberRequest> requested)
         {
-            HashSet<Guid> desired = this.BuildMemberIds(userId, memberIds);
+            Dictionary<Guid, FamilyMemberRequest> desired = this.BuildDesiredMembers(requested);
+
+            if (desired.Count == 0)
+                throw new ArgumentException("A família precisa de ao menos um membro.", nameof(requested));
+
+            // Validação antes de qualquer alteração, para não deixar o contexto sujo
+            if (!desired.Values.Any(x => x.Role == MembershipRole.Host))
+                throw new ForbiddenOperationException("A família precisa de ao menos um host.");
+
+            await this.EnsureTitlesAreAvailableAsync(family.Id, desired.Values);
 
             IEnumerable<UserFamily> current = await this.familyRepository.GetMembersAsync(family.Id);
 
@@ -177,50 +460,59 @@ namespace home.api.Application.Services
             {
                 currentIds.Add(member.UserId);
 
-                if (!desired.Contains(member.UserId))
+                if (desired.TryGetValue(member.UserId, out FamilyMemberRequest? wanted))
+                {
+                    member.FamilyTitleId = wanted.FamilyTitleId;
+                    member.Role = wanted.Role;
+                    member.LastUpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
                     this.familyRepository.RemoveMember(member);
+                }
             }
 
-            foreach (Guid memberId in desired)
+            foreach (KeyValuePair<Guid, FamilyMemberRequest> entry in desired)
             {
-                if (!currentIds.Contains(memberId))
-                    this.familyRepository.AddMember(this.CreateMember(family.Id, memberId));
+                if (!currentIds.Contains(entry.Key))
+                    this.familyRepository.AddMember(this.CreateMember(family.Id, entry.Value));
             }
         }
 
         /// <summary>
-        /// Monta a composição final garantindo o usuário atual e sem duplicatas
+        /// Normaliza a lista informada, descartando identificadores vazios e duplicatas
         /// </summary>
-        /// <param name="userId">Usuário atual</param>
-        /// <param name="memberIds">Membros informados</param>
-        private HashSet<Guid> BuildMemberIds(Guid userId, ICollection<Guid>? memberIds)
+        /// <param name="members">Membros informados</param>
+        private Dictionary<Guid, FamilyMemberRequest> BuildDesiredMembers(IEnumerable<FamilyMemberRequest>? members)
         {
-            HashSet<Guid> ids = new HashSet<Guid> { userId };
+            Dictionary<Guid, FamilyMemberRequest> desired = new Dictionary<Guid, FamilyMemberRequest>();
 
-            if (memberIds is null)
-                return ids;
+            if (members is null)
+                return desired;
 
-            foreach (Guid memberId in memberIds)
+            foreach (FamilyMemberRequest member in members)
             {
-                if (memberId != Guid.Empty)
-                    ids.Add(memberId);
+                if (member is not null && member.UserId != Guid.Empty)
+                    desired[member.UserId] = member;
             }
 
-            return ids;
+            return desired;
         }
 
         /// <summary>
         /// Cria uma associação entre usuário e família
         /// </summary>
         /// <param name="familyId">Família ID</param>
-        /// <param name="memberId">Usuário ID do membro</param>
-        private UserFamily CreateMember(Guid familyId, Guid memberId)
+        /// <param name="member">Dados do membro</param>
+        private UserFamily CreateMember(Guid familyId, FamilyMemberRequest member)
         {
             return new UserFamily
             {
                 Id = Guid.CreateVersion7(),
                 FamilyId = familyId,
-                UserId = memberId,
+                UserId = member.UserId,
+                FamilyTitleId = member.FamilyTitleId,
+                Role = member.Role,
                 CreatedAt = DateTime.UtcNow
             };
         }
@@ -242,26 +534,26 @@ namespace home.api.Application.Services
             }
             catch (DbUpdateException exception)
             {
-                // Membro inexistente cai aqui: a FK de UserFamily para AspNetUsers é quem valida
+                // Membro inexistente cai aqui: a FK de UserFamilies para AspNetUsers é quem valida
                 this.logger.LogError(
                     exception,
-                    "Falha ao {Operation} a família {FamilyId} pelo usuário {UserId}.",
+                    "Falha ao {Operation} família {FamilyId} pelo usuário {UserId}.",
                     operation, familyId, userId);
 
-                throw new PersistenceException($"Não foi possível {operation} a família.", exception);
+                throw new PersistenceException($"Não foi possível {operation} família.", exception);
             }
 
             if (affectedRows == 0)
             {
                 this.logger.LogWarning(
-                    "Nenhum registro afetado ao {Operation} a família {FamilyId} pelo usuário {UserId}.",
+                    "Nenhum registro afetado ao {Operation} família {FamilyId} pelo usuário {UserId}.",
                     operation, familyId, userId);
 
-                throw new PersistenceException($"Não foi possível {operation} a família.");
+                throw new PersistenceException($"Não foi possível {operation} família.");
             }
 
             this.logger.LogInformation(
-                "Operação de {Operation} concluída na família {FamilyId} pelo usuário {UserId}.",
+                "Operação de {Operation} família {FamilyId} concluída pelo usuário {UserId}.",
                 operation, familyId, userId);
         }
 

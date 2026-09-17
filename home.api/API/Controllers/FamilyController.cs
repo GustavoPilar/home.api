@@ -1,5 +1,5 @@
 ﻿using home.api.Application.Entities;
-using home.api.Application.Entities.DTOs;
+using home.api.Application.Entities.DTOs.Families;
 using home.api.Application.Interfaces;
 using home.api.Exceptions;
 using home.api.Utilities;
@@ -20,7 +20,7 @@ namespace home.api.API.Controllers
 
         #endregion
 
-        #region HttpActions :: GetFamiliesAsync(), GetFamilyByIdAsync(), CreateFamilyAsync(), UpdateFamilyAsync(), DeleteFamilyAsync()
+        #region HttpActions :: GetFamiliesAsync(), GetFamilyByIdAsync(), CreateFamilyAsync(), UpdateFamilyAsync(), DeleteFamilyAsync(), LeaveFamilyAsync()
 
         /// <summary>
         /// Lista as famílias das quais o usuário autenticado é membro
@@ -85,7 +85,7 @@ namespace home.api.API.Controllers
         }
 
         /// <summary>
-        /// Cria uma família para o usuário autenticado
+        /// Cria uma família; o autor entra como host
         /// </summary>
         /// <param name="request">Dados da família</param>
         [HttpPost]
@@ -108,7 +108,7 @@ namespace home.api.API.Controllers
             catch (ArgumentException exception)
             {
                 this.logger.LogWarning(exception, exception.Message);
-                return this.BadRequest(new ApiResponse<FamilyResponse> { Message = "Requisição inválida." });
+                return this.BadRequest(new ApiResponse<FamilyResponse> { Message = exception.Message });
             }
             catch (PersistenceException exception)
             {
@@ -123,7 +123,7 @@ namespace home.api.API.Controllers
         }
 
         /// <summary>
-        /// Atualiza uma família da qual o usuário autenticado é membro
+        /// Atualiza a família. Restrito ao host.
         /// </summary>
         /// <param name="request">Dados da família</param>
         [HttpPut]
@@ -140,6 +140,11 @@ namespace home.api.API.Controllers
                     Data = family
                 });
             }
+            catch (ForbiddenOperationException exception)
+            {
+                this.logger.LogWarning(exception, exception.Message);
+                return this.StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<FamilyResponse> { Message = exception.Message });
+            }
             catch (EntityNotFoundException exception)
             {
                 this.logger.LogWarning(exception, exception.Message);
@@ -148,7 +153,7 @@ namespace home.api.API.Controllers
             catch (ArgumentException exception)
             {
                 this.logger.LogWarning(exception, exception.Message);
-                return this.BadRequest(new ApiResponse<FamilyResponse> { Message = "Requisição inválida." });
+                return this.BadRequest(new ApiResponse<FamilyResponse> { Message = exception.Message });
             }
             catch (PersistenceException exception)
             {
@@ -163,7 +168,7 @@ namespace home.api.API.Controllers
         }
 
         /// <summary>
-        /// Remove uma família da qual o usuário autenticado é membro
+        /// Remove a família. Restrito ao host.
         /// </summary>
         /// <param name="id">Família ID</param>
         [HttpDelete("{id:guid}")]
@@ -182,6 +187,11 @@ namespace home.api.API.Controllers
                     Message = "Família removida com sucesso."
                 });
             }
+            catch (ForbiddenOperationException exception)
+            {
+                this.logger.LogWarning(exception, exception.Message);
+                return this.StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<FamilyResponse> { Message = exception.Message });
+            }
             catch (ArgumentException exception)
             {
                 this.logger.LogWarning(exception, exception.Message);
@@ -191,6 +201,49 @@ namespace home.api.API.Controllers
             {
                 this.logger.LogError(exception, exception.Message);
                 return this.StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<FamilyResponse> { Message = "Não foi possível remover a família." });
+            }
+            catch (Exception exception)
+            {
+                this.logger.LogError(exception, exception.Message);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<FamilyResponse> { Message = "Erro interno." });
+            }
+        }
+
+        /// <summary>
+        /// Sai da família. Sendo o único host, é preciso indicar o sucessor.
+        /// </summary>
+        /// <param name="id">Família ID</param>
+        /// <param name="request">Indicação do novo host</param>
+        [HttpPost("{id:guid}/leave")]
+        public async Task<ActionResult<ApiResponse<FamilyResponse>>> LeaveFamilyAsync(Guid id, FamilyLeaveRequest? request)
+        {
+            try
+            {
+                bool left = await this.familyService.LeaveAsync(this.User.GetUserId(), id, request);
+
+                if (!left)
+                    return this.NotFound(new ApiResponse<FamilyResponse> { Message = "Família não encontrada." });
+
+                return this.Ok(new ApiResponse<FamilyResponse>
+                {
+                    Success = true,
+                    Message = "Você saiu da família."
+                });
+            }
+            catch (ForbiddenOperationException exception)
+            {
+                this.logger.LogWarning(exception, exception.Message);
+                return this.StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<FamilyResponse> { Message = exception.Message });
+            }
+            catch (ArgumentException exception)
+            {
+                this.logger.LogWarning(exception, exception.Message);
+                return this.BadRequest(new ApiResponse<FamilyResponse> { Message = "Requisição inválida." });
+            }
+            catch (PersistenceException exception)
+            {
+                this.logger.LogError(exception, exception.Message);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<FamilyResponse> { Message = "Não foi possível sair da família." });
             }
             catch (Exception exception)
             {
