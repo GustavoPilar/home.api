@@ -45,9 +45,11 @@ builder.Services.AddScoped<UnitOfWork>();
 // Mapeadores: mantêm a conversão DTO/entidade fora dos serviços
 builder.Services.AddScoped<IUserMapper, UserMapper>();
 builder.Services.AddScoped<IMapperBase<Home, HomeRequest, HomeUpdate, HomeResponse>, HomeMapper>();
+builder.Services.AddScoped<IFamilyMapper, FamilyMapper>();
 
 // Serviços
 builder.Services.AddScoped<IHomeService, HomeService>();
+builder.Services.AddScoped<IFamilyService, FamilyService>();
 
 #endregion
 
@@ -69,11 +71,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorizationBuilder()
-    .SetDefaultPolicy(
-        new AuthorizationPolicyBuilder()
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .Build());
+        .Build();
+});
 
 WebApplication app = builder.Build();
 

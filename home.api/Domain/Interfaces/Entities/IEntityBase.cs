@@ -1,24 +1,17 @@
-﻿using home.api.Domain.Entities;
-
-namespace home.api.Domain.Interfaces.Entities
+﻿namespace home.api.Domain.Interfaces.Entities
 {
+    /// <summary>
+    /// Identidade e auditoria comuns a toda entidade de domínio
+    /// </summary>
     public interface IEntityBase
     {
-        #region Fields
+        #region Properties
 
         Guid Id { get; set; }
-
-        Guid UserId { get; set; }
 
         DateTime CreatedAt { get; set; }
 
         DateTime? LastUpdatedAt { get; set; }
-
-        #endregion
-
-        #region Navigation
-
-        User? User { get; set; }
 
         #endregion
     }

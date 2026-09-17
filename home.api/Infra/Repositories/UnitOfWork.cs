@@ -16,7 +16,25 @@ namespace home.api.Infra.Repositories
 
         private readonly AppDbContext context = context;
         private readonly ConcurrentDictionary<Type, object> repositories = new();
+        private IFamilyRepository? familyRepository;
         private bool disposed = false;
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Repositório da família, que não usa o genérico por não ter proprietário
+        /// </summary>
+        public IFamilyRepository FamilyRepository
+        {
+            get
+            {
+                this.familyRepository ??= new FamilyRepository(this.context);
+
+                return this.familyRepository;
+            }
+        }
 
         #endregion
 
@@ -25,9 +43,9 @@ namespace home.api.Infra.Repositories
         /// <summary>
         /// Obtém (e reaproveita) o repositório genérico da entidade informada
         /// </summary>
-        /// <typeparam name="T">Entidade de domínio</typeparam>
+        /// <typeparam name="T">Entidade com proprietário</typeparam>
         public IRepositoryBase<T> GetRepository<T>()
-            where T : class, IEntityBase
+            where T : class, IOwnedEntity
         {
             return (IRepositoryBase<T>)this.repositories.GetOrAdd(
                 typeof(T),

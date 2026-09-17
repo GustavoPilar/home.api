@@ -4,18 +4,18 @@ using home.api.Domain.Interfaces.Entities;
 namespace home.api.Application.Interfaces
 {
     /// <summary>
-    /// Contrato de conversão entre a entidade de domínio e os seus DTOs.
+    /// Contrato de conversão entre a entidade com proprietário e os seus DTOs.
     /// Mantém o mapeamento fora da responsabilidade do serviço (SRP).
     /// </summary>
-    /// <typeparam name="T">Entidade de domínio</typeparam>
+    /// <typeparam name="T">Entidade com proprietário</typeparam>
     /// <typeparam name="TRequest">DTO de criação</typeparam>
     /// <typeparam name="TUpdate">DTO de atualização</typeparam>
     /// <typeparam name="TResponse">DTO de saída</typeparam>
     public interface IMapperBase<T, TRequest, TUpdate, TResponse>
-        where T : class, IEntityBase
+        where T : class, IOwnedEntity
         where TRequest : class
         where TUpdate : class, IUpdateBase
-        where TResponse : class, IResponseBase
+        where TResponse : class, IOwnedResponseBase
     {
         #region Members :: ToEntity(), ApplyChanges(), ToResponse(), ToResponseList()
 

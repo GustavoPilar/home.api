@@ -3,11 +3,11 @@
 namespace home.api.Domain.Interfaces.Repositories
 {
     /// <summary>
-    /// Contrato de acesso a dados comum a Agregate Root
+    /// Acesso a dados comum às entidades que pertencem a um usuário
     /// </summary>
-    /// <typeparam name="T">Entidade de domínio</typeparam>
+    /// <typeparam name="T">Entidade com proprietário</typeparam>
     public interface IRepositoryBase<T>
-        where T : class, IEntityBase
+        where T : class, IOwnedEntity
     {
         #region Members :: GetEntitiesAsync(), GetByIdAsync(), AddEntity(), UpdateEntity(), DeleteEntity()
 

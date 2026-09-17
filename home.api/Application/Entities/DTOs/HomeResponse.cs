@@ -5,7 +5,7 @@ namespace home.api.Application.Entities.DTOs
     /// <summary>
     /// DTO de saída do lar
     /// </summary>
-    public class HomeResponse : ResponseBase
+    public class HomeResponse : OwnedResponseBase
     {
         #region Properties
 
@@ -16,6 +16,11 @@ namespace home.api.Application.Entities.DTOs
         public string? Address { get; set; }
 
         public int? AddressNumber { get; set; }
+
+        /// <summary>
+        /// Família com quem o lar é compartilhado
+        /// </summary>
+        public Guid? FamilyId { get; set; }
 
         #endregion
     }

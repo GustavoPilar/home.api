@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore;
 namespace home.api.Application.Services
 {
     /// <summary>
-    /// Serviço genérico de CRUD.
+    /// Serviço genérico de CRUD das entidades com proprietário.
     /// Responde por validação, identidade, auditoria, persistência e log;
     /// a conversão DTO/entidade fica a cargo do mapeador injetado.
     /// </summary>
-    /// <typeparam name="T">Entidade de domínio</typeparam>
+    /// <typeparam name="T">Entidade com proprietário</typeparam>
     /// <typeparam name="TRequest">DTO de criação</typeparam>
     /// <typeparam name="TUpdate">DTO de atualização</typeparam>
     /// <typeparam name="TResponse">DTO de saída</typeparam>
@@ -21,10 +21,10 @@ namespace home.api.Application.Services
         UnitOfWork unitOfWork,
         IMapperBase<T, TRequest, TUpdate, TResponse> mapper,
         ILogger logger) : IServiceBase<T, TRequest, TUpdate, TResponse>
-        where T : class, IEntityBase
+        where T : class, IOwnedEntity
         where TRequest : class
         where TUpdate : class, IUpdateBase
-        where TResponse : class, IResponseBase
+        where TResponse : class, IOwnedResponseBase
     {
         #region Fields
 
@@ -44,7 +44,7 @@ namespace home.api.Application.Services
         /// <exception cref="ArgumentException">Usuário ID inválido</exception>
         public virtual async Task<IEnumerable<TResponse>> GetEntitiesAsync(Guid userId)
         {
-            this.ValidateUserId(userId);
+            this.ValidateId(userId);
 
             IEnumerable<T> entities = await this.repositoryBase.GetEntitiesAsync(userId);
 
@@ -59,8 +59,8 @@ namespace home.api.Application.Services
         /// <exception cref="ArgumentException">Identificador inválido</exception>
         public virtual async Task<TResponse?> GetEntityByIdAsync(Guid userId, Guid entityId)
         {
-            this.ValidateUserId(userId);
-            this.ValidateUserId(entityId);
+            this.ValidateId(userId);
+            this.ValidateId(entityId);
 
             T? entity = await this.repositoryBase.GetByIdAsync(userId, entityId);
 
@@ -78,7 +78,7 @@ namespace home.api.Application.Services
         public virtual async Task<TResponse> CreateEntityAsync(Guid userId, TRequest request)
         {
             ArgumentNullException.ThrowIfNull(request);
-            this.ValidateUserId(userId);
+            this.ValidateId(userId);
 
             T entity = this.mapper.ToEntity(request);
 
@@ -107,8 +107,8 @@ namespace home.api.Application.Services
         public virtual async Task<TResponse> UpdateEntityAsync(Guid userId, TUpdate request)
         {
             ArgumentNullException.ThrowIfNull(request);
-            this.ValidateUserId(userId);
-            this.ValidateUserId(request.Id);
+            this.ValidateId(userId);
+            this.ValidateId(request.Id);
 
             // A busca filtrada por usuário é o que impede alterar a entidade de terceiros
             T? entity = await this.repositoryBase.GetByIdAsync(userId, request.Id);
@@ -136,8 +136,8 @@ namespace home.api.Application.Services
         /// <exception cref="PersistenceException">Falha ao persistir</exception>
         public virtual async Task<bool> DeleteEntityAsync(Guid userId, Guid entityId)
         {
-            this.ValidateUserId(userId);
-            this.ValidateUserId(entityId);
+            this.ValidateId(userId);
+            this.ValidateId(entityId);
 
             T? entity = await this.repositoryBase.GetByIdAsync(userId, entityId);
 
@@ -153,7 +153,7 @@ namespace home.api.Application.Services
 
         #endregion
 
-        #region Helpers :: PersistAsync(), ValidateUserId(), ValidateEntityId()
+        #region Helpers :: PersistAsync(), ValidateId(), ValidateEntityId()
 
         /// <summary>
         /// Salva as alterações pendentes e registra o resultado
@@ -195,14 +195,14 @@ namespace home.api.Application.Services
         }
 
         /// <summary>
-        /// Valida o identificador
+        /// Valida o identificador da entidade
         /// </summary>
-        /// <param name="userId">ID</param>
-        /// <exception cref="ArgumentException">ID inválido</exception>
-        protected void ValidateUserId(Guid id)
+        /// <param name="userId">Entidade ID</param>
+        /// <exception cref="ArgumentException">Entidade ID inválido</exception>
+        protected void ValidateId(Guid id)
         {
             if (id == Guid.Empty)
-                throw new ArgumentException("Id inválido.", nameof(id));
+                throw new ArgumentException("Entidade ID inválido.", nameof(id));
         }
 
         #endregion

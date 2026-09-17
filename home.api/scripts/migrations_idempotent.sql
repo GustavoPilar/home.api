@@ -305,3 +305,108 @@ END;
 
 /
 
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260916194301_add_home_entity';
+IF v_Count = 0 THEN
+
+    declare
+       l_nullable user_tab_columns.nullable % type;
+    begin 
+       select nullable into l_nullable 
+       from user_tab_columns 
+      where table_name = 'AspNetUsers' 
+      and column_name = 'LastName' 
+    ;
+       if l_nullable = 'N' then 
+            EXECUTE IMMEDIATE 'ALTER TABLE "AspNetUsers" MODIFY "LastName" NVARCHAR2(30) NULL';
+     else 
+            EXECUTE IMMEDIATE 'ALTER TABLE "AspNetUsers" MODIFY "LastName" NVARCHAR2(30)';
+     end if;
+    end;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260916194301_add_home_entity';
+IF v_Count = 0 THEN
+
+    declare
+       l_nullable user_tab_columns.nullable % type;
+    begin 
+       select nullable into l_nullable 
+       from user_tab_columns 
+      where table_name = 'AspNetUsers' 
+      and column_name = 'FirstName' 
+    ;
+       if l_nullable = 'N' then 
+            EXECUTE IMMEDIATE 'ALTER TABLE "AspNetUsers" MODIFY "FirstName" NVARCHAR2(50) ';
+     else 
+            EXECUTE IMMEDIATE 'ALTER TABLE "AspNetUsers" MODIFY "FirstName" NVARCHAR2(50) NOT NULL';
+     end if;
+    end;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260916194301_add_home_entity';
+IF v_Count = 0 THEN
+
+    BEGIN 
+    EXECUTE IMMEDIATE 'CREATE TABLE 
+    "Homes" (
+        "Id" RAW(16) NOT NULL,
+        "Name" NVARCHAR2(150) NOT NULL,
+        "ZipCode" NVARCHAR2(8),
+        "Address" NVARCHAR2(150),
+        "AddressNumber" NUMBER(10),
+        "UserId" RAW(16) NOT NULL,
+        "CreatedAt" TIMESTAMP(7) NOT NULL,
+        "LastUpdatedAt" TIMESTAMP(7),
+        CONSTRAINT "PK_Homes" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_Homes_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+    )';
+    END;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260916194301_add_home_entity';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE INDEX "IX_Homes_UserId" ON "Homes" ("UserId")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260916194301_add_home_entity';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES (N''20260916194301_add_home_entity'', N''10.0.12'')'
+    ;
+ END IF;
+END;
+
+/
+

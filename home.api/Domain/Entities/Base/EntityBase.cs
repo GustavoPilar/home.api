@@ -1,9 +1,11 @@
-﻿namespace home.api.Application.Entities.DTOs.Base
+﻿using home.api.Domain.Interfaces.Entities;
+
+namespace home.api.Domain.Entities.Base
 {
     /// <summary>
-    /// DTO de saída sem dependência do Domain: quem preenche estes campos é o mapeador
+    /// Base de identidade e auditoria, sem vínculo com usuário
     /// </summary>
-    public class ResponseBase : IResponseBase
+    public abstract class EntityBase : IEntityBase
     {
         #region Properties
 

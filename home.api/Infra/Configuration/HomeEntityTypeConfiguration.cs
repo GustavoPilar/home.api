@@ -8,6 +8,8 @@ namespace home.api.Infra.Configuration
     {
         public void Configure(EntityTypeBuilder<Home> builder)
         {
+            builder.ToTable("Homes");
+
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.Name)
@@ -28,7 +30,16 @@ namespace home.api.Infra.Configuration
             builder.HasOne(x => x.User)
                 .WithMany(u => u.Homes)
                 .HasForeignKey(x => x.UserId)
-                .IsRequired();
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // SetNull explícito: sem isso o EF usa ClientSetNull e só desfaz o vínculo
+            // se os lares estiverem carregados, quebrando com erro de FK no banco
+            builder.HasOne(x => x.Family)
+                .WithMany(f => f.Homes)
+                .HasForeignKey(x => x.FamilyId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

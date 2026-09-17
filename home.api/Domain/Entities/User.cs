@@ -42,10 +42,18 @@ namespace home.api.Domain.Entities
 
         #endregion
 
-        #region Navigations
+        #region Navigation
 
         [JsonIgnore]
         public ICollection<Home>? Homes { get; set; }
+
+        /// <summary>
+        /// Associações do usuário com famílias.
+        /// Não existe navegação direta para Family: a relação é sempre
+        /// explícita por UserFamily, para não gerar duas relações concorrentes.
+        /// </summary>
+        [JsonIgnore]
+        public ICollection<UserFamily>? UserFamilies { get; set; }
 
         #endregion
     }

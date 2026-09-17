@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 namespace home.api.Infra.Repositories
 {
     /// <summary>
-    /// Implementação genérica de acesso a dados sobre o AppDbContext
+    /// Implementação genérica de acesso a dados das entidades com proprietário
     /// </summary>
-    /// <typeparam name="T">Entidade de domínio</typeparam>
+    /// <typeparam name="T">Entidade com proprietário</typeparam>
     public class RepositoryBase<T>(
         AppDbContext context) : IRepositoryBase<T>
-        where T : class, IEntityBase
+        where T : class, IOwnedEntity
     {
         #region Fields
 
@@ -39,6 +39,7 @@ namespace home.api.Infra.Repositories
         /// <param name="userId">Usuário ID</param>
         public async Task<IEnumerable<T>> GetEntitiesAsync(Guid userId)
         {
+            // AsNoTracking porque a listagem é somente leitura e não precisa do change tracker
             return await this.dbSet
                 .AsNoTracking()
                 .Where(x => x.UserId == userId)
@@ -64,6 +65,7 @@ namespace home.api.Infra.Repositories
         {
             ArgumentNullException.ThrowIfNull(entity);
 
+            // Entidade já rastreada não pode ser anexada de novo: o change tracker lançaria exceção
             if (this.context.Entry(entity).State == EntityState.Detached)
             {
                 this.dbSet.Attach(entity);

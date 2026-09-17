@@ -24,7 +24,8 @@ namespace home.api.Application.Mappers
                 Name = request.Name,
                 ZipCode = request.ZipCode,
                 Address = request.Address,
-                AddressNumber = request.AddressNumber
+                AddressNumber = request.AddressNumber,
+                FamilyId = request.FamilyId
             };
         }
 
@@ -43,6 +44,7 @@ namespace home.api.Application.Mappers
             entity.ZipCode = request.ZipCode;
             entity.Address = request.Address;
             entity.AddressNumber = request.AddressNumber;
+            entity.FamilyId = request.FamilyId;
         }
 
         /// <summary>
@@ -59,7 +61,8 @@ namespace home.api.Application.Mappers
                 Name = entity.Name,
                 ZipCode = entity.ZipCode,
                 Address = entity.Address,
-                AddressNumber = entity.AddressNumber
+                AddressNumber = entity.AddressNumber,
+                FamilyId = entity.FamilyId
             };
 
             this.FillResponseBase(entity, response);

@@ -8,35 +8,22 @@ namespace home.api.Application.Mappers
     /// Base dos mapeadores: concentra o que é comum a todas as entidades
     /// e deixa para o mapeador concreto apenas os campos de negócio.
     /// </summary>
-    /// <typeparam name="T">Entidade de domínio</typeparam>
+    /// <typeparam name="T">Entidade com proprietário</typeparam>
     /// <typeparam name="TRequest">DTO de criação</typeparam>
     /// <typeparam name="TUpdate">DTO de atualização</typeparam>
     /// <typeparam name="TResponse">DTO de saída</typeparam>
     public abstract class MapperBase<T, TRequest, TUpdate, TResponse> : IMapperBase<T, TRequest, TUpdate, TResponse>
-        where T : class, IEntityBase
+        where T : class, IOwnedEntity
         where TRequest : class
         where TUpdate : class, IUpdateBase
-        where TResponse : class, IResponseBase
+        where TResponse : class, IOwnedResponseBase
     {
         #region Members :: ToEntity(), ApplyChanges(), ToResponse(), ToResponseList()
 
-        /// <summary>
-        /// Converte o DTO de criação em uma nova entidade, sem preencher identidade e auditoria
-        /// </summary>
-        /// <param name="request">DTO de criação</param>
         public abstract T ToEntity(TRequest request);
 
-        /// <summary>
-        /// Aplica as alterações do DTO sobre uma entidade já rastreada pelo contexto
-        /// </summary>
-        /// <param name="request">DTO de atualização</param>
-        /// <param name="entity">Entidade rastreada</param>
         public abstract void ApplyChanges(TUpdate request, T entity);
 
-        /// <summary>
-        /// Converte a entidade no DTO de saída
-        /// </summary>
-        /// <param name="entity">Entidade de domínio</param>
         public abstract TResponse ToResponse(T entity);
 
         /// <summary>
@@ -63,7 +50,7 @@ namespace home.api.Application.Mappers
         #region Helpers :: FillResponseBase()
 
         /// <summary>
-        /// Copia os campos de identidade e auditoria para o DTO de saída
+        /// Copia os campos de identidade, proprietário e auditoria para o DTO de saída
         /// </summary>
         /// <param name="entity">Entidade de origem</param>
         /// <param name="response">DTO de destino</param>

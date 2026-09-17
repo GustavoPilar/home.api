@@ -2,19 +2,22 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 
 namespace home.api.Infra.Db
 {
     public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
     {
-        #region Fields
+        #region Properties
 
         public DbSet<Home> Homes { get; set; } = default!;
 
+        public DbSet<Family> Families { get; set; } = default!;
+
+        public DbSet<UserFamily> UserFamilies { get; set; } = default!;
+
         #endregion
 
-        #region Member
+        #region Members :: OnModelCreating()
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -23,6 +26,5 @@ namespace home.api.Infra.Db
         }
 
         #endregion
-
     }
 }

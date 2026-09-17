@@ -3,6 +3,7 @@ using home.api.Application.Entities.DTOs;
 using home.api.Application.Interfaces;
 using home.api.Exceptions;
 using home.api.Utilities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace home.api.API.Controllers
