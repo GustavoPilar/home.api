@@ -540,3 +540,180 @@ END;
 
 /
 
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'ALTER TABLE "UserFamilies" ADD "FamilyTitleId" RAW(16)'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'ALTER TABLE "UserFamilies" ADD "Role" NVARCHAR2(20) DEFAULT N''Member'' NOT NULL'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    BEGIN 
+    EXECUTE IMMEDIATE 'CREATE TABLE 
+    "FamilyTitles" (
+        "Id" RAW(16) NOT NULL,
+        "Name" NVARCHAR2(50) NOT NULL,
+        "FamilyId" RAW(16),
+        "CreatedAt" TIMESTAMP(7) NOT NULL,
+        "LastUpdatedAt" TIMESTAMP(7),
+        CONSTRAINT "PK_FamilyTitles" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_FamilyTitles_Families_FamilyId" FOREIGN KEY ("FamilyId") REFERENCES "Families" ("Id") ON DELETE CASCADE
+    )';
+    END;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    BEGIN
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000001'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Pai');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000002'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Mãe');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000003'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Cônjuge');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000004'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Filho');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000005'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Filha');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000006'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Irmão');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000007'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Irmã');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000008'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Avô');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000009'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Avó');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000010'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Neto');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000011'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Neta');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000012'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Tio');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000013'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Tia');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000014'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Sobrinho');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000015'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Sobrinha');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000016'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Primo');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000017'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Prima');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000018'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Padrasto');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000019'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Madrasta');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000020'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Enteado');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000021'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Enteada');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000022'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Sogro');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000023'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Sogra');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000024'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Genro');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000025'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Nora');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000026'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Cunhado');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000027'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Cunhada');
+    INSERT INTO "FamilyTitles" ("Id", "CreatedAt", "FamilyId", "LastUpdatedAt", "Name")
+    VALUES (HEXTORAW('D4C3B2A1000000408000000000000028'), TO_TIMESTAMP('2026-01-01 00:00:00.0000000', 'YYYY-MM-DD HH24:MI:SS.FF'), NULL, NULL, N'Agregado');
+    END;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE INDEX "IX_UserFamilies_FamilyTitleId" ON "UserFamilies" ("FamilyTitleId")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'CREATE UNIQUE INDEX "IX_FamilyTitles_FamilyId_Name" ON "FamilyTitles" ("FamilyId", "Name")'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'ALTER TABLE "UserFamilies" ADD CONSTRAINT "FK_UserFamilies_FamilyTitles_FamilyTitleId" FOREIGN KEY ("FamilyTitleId") REFERENCES "FamilyTitles" ("Id") ON DELETE SET NULL'
+    ;
+ END IF;
+END;
+
+/
+
+DECLARE
+    v_Count INTEGER;
+BEGIN
+SELECT COUNT(*) INTO v_Count FROM "__EFMigrationsHistory" WHERE "MigrationId" = N'20260917193630_add_family_titles_and_membership_role';
+IF v_Count = 0 THEN
+
+    EXECUTE IMMEDIATE 
+    'INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES (N''20260917193630_add_family_titles_and_membership_role'', N''10.0.12'')'
+    ;
+ END IF;
+END;
+
+/
+

@@ -85,5 +85,30 @@ namespace home.api.Domain.Interfaces.Repositories
         void RemoveTitle(FamilyTitle title);
 
         #endregion
+
+        #region Members :: Convites
+
+        /// <summary>
+        /// Busca o convite pelo hash do token
+        /// </summary>
+        /// <param name="tokenHash">Hash do token informado</param>
+        Task<FamilyInvite?> GetInviteByTokenHashAsync(string tokenHash);
+
+        /// <summary>
+        /// Busca um convite da família pelo identificador
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="inviteId">Convite ID</param>
+        Task<FamilyInvite?> GetInviteByIdAsync(Guid familyId, Guid inviteId);
+
+        /// <summary>
+        /// Lista os convites emitidos pela família, do mais recente ao mais antigo
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        Task<IEnumerable<FamilyInvite>> GetInvitesAsync(Guid familyId);
+
+        void AddInvite(FamilyInvite invite);
+
+        #endregion
     }
 }

@@ -18,6 +18,11 @@
         /// </summary>
         public const string REGEX_ONLY_NUMBERS = @"^[0-9]+$";
 
+        /// <summary>
+        /// Validade do convite de família, em horas
+        /// </summary>
+        public const int INVITE_EXPIRATION_IN_HOURS = 24;
+
         #endregion
     }
 }

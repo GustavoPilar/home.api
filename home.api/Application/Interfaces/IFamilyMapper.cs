@@ -32,6 +32,14 @@ namespace home.api.Application.Interfaces
 
         IEnumerable<FamilyTitleResponse> ToTitleResponseList(IEnumerable<FamilyTitle> entities);
 
+        /// <summary>
+        /// Converte o convite no DTO de saída, sem jamais expor o token
+        /// </summary>
+        /// <param name="entity">Convite</param>
+        FamilyInviteResponse ToInviteResponse(FamilyInvite entity);
+
+        IEnumerable<FamilyInviteResponse> ToInviteResponseList(IEnumerable<FamilyInvite> entities);
+
         #endregion
     }
 }

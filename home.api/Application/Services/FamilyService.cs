@@ -5,6 +5,7 @@ using home.api.Domain.Enums;
 using home.api.Domain.Interfaces.Repositories;
 using home.api.Exceptions;
 using home.api.Infra.Repositories;
+using home.api.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace home.api.Application.Services
@@ -359,7 +360,178 @@ namespace home.api.Application.Services
 
         #endregion
 
-        #region Helpers :: EnsureMembershipAsync(), EnsureHostAsync(), EnsureOwnTitleAsync(), EnsureTitlesAreAvailableAsync(), SyncMembersAsync(), BuildDesiredMembers(), CreateMember(), PersistAsync(), ValidateId()
+        #region Members :: Convites
+
+        /// <summary>
+        /// Emite um convite de entrada na família
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="request">E-mail do destinatário, ou vazio para link aberto</param>
+        /// <exception cref="ArgumentNullException">Requisição nula</exception>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<FamilyInviteCreatedResponse> CreateInviteAsync(Guid userId, Guid familyId, FamilyInviteRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            string token = InviteToken.Generate();
+
+            FamilyInvite invite = new FamilyInvite
+            {
+                Id = Guid.CreateVersion7(),
+                FamilyId = familyId,
+                CreatedByUserId = userId,
+                TokenHash = InviteToken.Hash(token),
+                TargetEmail = this.NormalizeEmail(request.TargetEmail),
+                ExpiresAt = DateTime.UtcNow.AddHours(Global.INVITE_EXPIRATION_IN_HOURS),
+                UseCount = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            this.familyRepository.AddInvite(invite);
+
+            await this.PersistAsync("criar o convite da", familyId, userId);
+
+            // O token não é registrado em log: ele é credencial ao portador
+            this.logger.LogInformation(
+                "Convite {InviteId} emitido para a família {FamilyId} pelo usuário {UserId}.",
+                invite.Id, familyId, userId);
+
+            return new FamilyInviteCreatedResponse
+            {
+                Token = token,
+                Invite = this.mapper.ToInviteResponse(invite)
+            };
+        }
+
+        /// <summary>
+        /// Lista os convites emitidos pela família
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
+        public async Task<IEnumerable<FamilyInviteResponse>> GetInvitesAsync(Guid userId, Guid familyId)
+        {
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            IEnumerable<FamilyInvite> invites = await this.familyRepository.GetInvitesAsync(familyId);
+
+            return this.mapper.ToInviteResponseList(invites);
+        }
+
+        /// <summary>
+        /// Revoga um convite antes da expiração
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="inviteId">Convite ID</param>
+        /// <exception cref="ArgumentException">Identificador inválido</exception>
+        /// <exception cref="ForbiddenOperationException">Usuário não é host</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<bool> RevokeInviteAsync(Guid userId, Guid familyId, Guid inviteId)
+        {
+            this.ValidateId(userId, nameof(userId));
+            this.ValidateId(familyId, nameof(familyId));
+            this.ValidateId(inviteId, nameof(inviteId));
+
+            await this.EnsureHostAsync(userId, familyId);
+
+            FamilyInvite? invite = await this.familyRepository.GetInviteByIdAsync(familyId, inviteId);
+
+            if (invite is null)
+                return false;
+
+            // Revogar duas vezes não é erro
+            if (invite.RevokedAt is not null)
+                return true;
+
+            invite.RevokedAt = DateTime.UtcNow;
+            invite.LastUpdatedAt = DateTime.UtcNow;
+
+            await this.PersistAsync("revogar o convite da", familyId, userId);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Aceita um convite e entra na família como membro comum
+        /// </summary>
+        /// <param name="userId">Usuário ID, obtido do token</param>
+        /// <param name="userEmail">E-mail do usuário, para validar convite dirigido</param>
+        /// <param name="token">Token recebido no link</param>
+        /// <exception cref="ArgumentException">Identificador ou token inválido</exception>
+        /// <exception cref="EntityNotFoundException">Convite inexistente</exception>
+        /// <exception cref="ForbiddenOperationException">Convite revogado, expirado ou de outro destinatário</exception>
+        /// <exception cref="PersistenceException">Falha ao persistir</exception>
+        public async Task<FamilyResponse> AcceptInviteAsync(Guid userId, string? userEmail, string token)
+        {
+            this.ValidateId(userId, nameof(userId));
+
+            if (string.IsNullOrWhiteSpace(token))
+                throw new ArgumentException("Convite inválido.", nameof(token));
+
+            FamilyInvite? invite = await this.familyRepository.GetInviteByTokenHashAsync(InviteToken.Hash(token));
+
+            if (invite is null)
+                throw new EntityNotFoundException("Convite inválido.");
+
+            if (invite.RevokedAt is not null)
+                throw new ForbiddenOperationException("Convite revogado.");
+
+            if (invite.ExpiresAt <= DateTime.UtcNow)
+                throw new ForbiddenOperationException("Convite expirado.");
+
+            if (invite.TargetEmail is not null)
+            {
+                string? normalized = this.NormalizeEmail(userEmail);
+
+                if (normalized is null || normalized != invite.TargetEmail)
+                    throw new ForbiddenOperationException("Este convite foi enviado para outra pessoa.");
+            }
+
+            UserFamily? membership = await this.familyRepository.GetMembershipAsync(userId, invite.FamilyId);
+
+            // Aceitar de novo não é erro nem duplica a associação
+            if (membership is null)
+            {
+                this.familyRepository.AddMember(new UserFamily
+                {
+                    Id = Guid.CreateVersion7(),
+                    FamilyId = invite.FamilyId,
+                    UserId = userId,
+                    FamilyTitleId = null,
+                    // Convite nunca promove: quem entra por link é sempre membro comum
+                    Role = MembershipRole.Member,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                invite.UseCount += 1;
+                invite.LastUpdatedAt = DateTime.UtcNow;
+
+                await this.PersistAsync("aceitar o convite da", invite.FamilyId, userId);
+            }
+
+            Family? family = await this.familyRepository.GetByIdForMemberAsync(userId, invite.FamilyId);
+
+            if (family is null)
+                throw new EntityNotFoundException("Família não encontrada.");
+
+            return this.mapper.ToResponse(family);
+        }
+
+        #endregion
+
+        #region Helpers :: EnsureMembershipAsync(), EnsureHostAsync(), EnsureOwnTitleAsync(), EnsureTitlesAreAvailableAsync(), SyncMembersAsync(), BuildDesiredMembers(), CreateMember(), PersistAsync(), NormalizeEmail(), ValidateId()
 
         /// <summary>
         /// Garante que o usuário pertence à família
@@ -492,8 +664,13 @@ namespace home.api.Application.Services
 
             foreach (FamilyMemberRequest member in members)
             {
-                if (member is not null && member.UserId != Guid.Empty)
-                    desired[member.UserId] = member;
+                ArgumentNullException.ThrowIfNull(member);
+
+                // Descartar em silêncio faria a API responder 201 com a família incompleta
+                if (member.UserId == Guid.Empty)
+                    throw new ArgumentException("Todo membro precisa de um userId válido.", nameof(members));
+
+                desired[member.UserId] = member;
             }
 
             return desired;
@@ -555,6 +732,18 @@ namespace home.api.Application.Services
             this.logger.LogInformation(
                 "Operação de {Operation} família {FamilyId} concluída pelo usuário {UserId}.",
                 operation, familyId, userId);
+        }
+
+        /// <summary>
+        /// Normaliza o e-mail para comparação, no mesmo formato em que é gravado
+        /// </summary>
+        /// <param name="email">E-mail informado</param>
+        private string? NormalizeEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return null;
+
+            return email.Trim().ToUpperInvariant();
         }
 
         /// <summary>

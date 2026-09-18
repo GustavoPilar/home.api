@@ -17,6 +17,7 @@ namespace home.api.Infra.Repositories
         private readonly DbSet<Family> families = context.Set<Family>();
         private readonly DbSet<UserFamily> members = context.Set<UserFamily>();
         private readonly DbSet<FamilyTitle> titles = context.Set<FamilyTitle>();
+        private readonly DbSet<FamilyInvite> invites = context.Set<FamilyInvite>();
 
         #endregion
 
@@ -183,6 +184,53 @@ namespace home.api.Infra.Repositories
             ArgumentNullException.ThrowIfNull(title);
 
             this.titles.Remove(title);
+        }
+
+        #endregion
+
+        #region Members :: Convites
+
+        /// <summary>
+        /// Busca o convite pelo hash do token
+        /// </summary>
+        /// <param name="tokenHash">Hash do token informado</param>
+        public async Task<FamilyInvite?> GetInviteByTokenHashAsync(string tokenHash)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
+
+            return await this.invites
+                .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+        }
+
+        /// <summary>
+        /// Busca um convite da família pelo identificador
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        /// <param name="inviteId">Convite ID</param>
+        public async Task<FamilyInvite?> GetInviteByIdAsync(Guid familyId, Guid inviteId)
+        {
+            return await this.invites
+                .FirstOrDefaultAsync(x => x.Id == inviteId && x.FamilyId == familyId);
+        }
+
+        /// <summary>
+        /// Lista os convites emitidos pela família
+        /// </summary>
+        /// <param name="familyId">Família ID</param>
+        public async Task<IEnumerable<FamilyInvite>> GetInvitesAsync(Guid familyId)
+        {
+            return await this.invites
+                .AsNoTracking()
+                .Where(x => x.FamilyId == familyId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
+
+        public void AddInvite(FamilyInvite invite)
+        {
+            ArgumentNullException.ThrowIfNull(invite);
+
+            this.invites.Add(invite);
         }
 
         #endregion

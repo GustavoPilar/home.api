@@ -169,5 +169,52 @@ namespace home.api.Application.Mappers
         }
 
         #endregion
+
+        #region Members :: Convites
+
+        /// <summary>
+        /// Converte o convite no DTO de saída. O TokenHash nunca sai daqui.
+        /// </summary>
+        /// <param name="entity">Convite</param>
+        /// <exception cref="ArgumentNullException">Convite nulo</exception>
+        public FamilyInviteResponse ToInviteResponse(FamilyInvite entity)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+
+            return new FamilyInviteResponse
+            {
+                Id = entity.Id,
+                FamilyId = entity.FamilyId,
+                TargetEmail = entity.TargetEmail,
+                IsOpen = entity.TargetEmail is null,
+                ExpiresAt = entity.ExpiresAt,
+                UseCount = entity.UseCount,
+                RevokedAt = entity.RevokedAt,
+                IsActive = entity.RevokedAt is null && entity.ExpiresAt > DateTime.UtcNow,
+                CreatedAt = entity.CreatedAt,
+                LastUpdatedAt = entity.LastUpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Converte uma coleção reaproveitando o mapeamento unitário (DRY)
+        /// </summary>
+        /// <param name="entities">Coleção de convites</param>
+        /// <exception cref="ArgumentNullException">Coleção nula</exception>
+        public IEnumerable<FamilyInviteResponse> ToInviteResponseList(IEnumerable<FamilyInvite> entities)
+        {
+            ArgumentNullException.ThrowIfNull(entities);
+
+            List<FamilyInviteResponse> responses = new List<FamilyInviteResponse>();
+
+            foreach (FamilyInvite entity in entities)
+            {
+                responses.Add(this.ToInviteResponse(entity));
+            }
+
+            return responses;
+        }
+
+        #endregion
     }
 }

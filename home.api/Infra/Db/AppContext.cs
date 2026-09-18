@@ -17,6 +17,8 @@ namespace home.api.Infra.Db
 
         public DbSet<FamilyTitle> FamilyTitles { get; set; } = default!;
 
+        public DbSet<FamilyInvite> FamilyInvites { get; set; } = default!;
+
         #endregion
 
         #region Members :: OnModelCreating()

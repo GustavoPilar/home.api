@@ -34,6 +34,12 @@ namespace home.api.Domain.Entities
         public ICollection<FamilyTitle>? FamilyTitles { get; set; }
 
         /// <summary>
+        /// Convites emitidos pela família
+        /// </summary>
+        [JsonIgnore]
+        public ICollection<FamilyInvite>? FamilyInvites { get; set; }
+
+        /// <summary>
         /// Lares compartilhados com a família
         /// </summary>
         [JsonIgnore]
