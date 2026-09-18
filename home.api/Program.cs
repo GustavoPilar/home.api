@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +20,14 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 string secretKey = builder.Configuration["JWT:SecretKey"]
     ?? throw new InvalidOperationException("A configuração JWT:SecretKey não foi definida.");
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Campo desconhecido no corpo vira 400 em vez de ser ignorado em silêncio:
+        // é o que transforma um "id" digitado no lugar de "userId" em erro claro,
+        // e não em requisição aceita pela metade
+        options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+    });
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
