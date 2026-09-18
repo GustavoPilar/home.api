@@ -1,5 +1,5 @@
 ﻿using home.api.Domain.Enums;
-using System.ComponentModel.DataAnnotations;
+using home.api.Utilities;
 
 namespace home.api.Application.Entities.DTOs.Families
 {
@@ -10,7 +10,7 @@ namespace home.api.Application.Entities.DTOs.Families
     {
         #region Properties
 
-        [Required(ErrorMessage = "Campo obrigatório.")]
+        [NotEmptyGuid(ErrorMessage = "Informe o userId do membro.")]
         public Guid UserId { get; set; }
 
         /// <summary>

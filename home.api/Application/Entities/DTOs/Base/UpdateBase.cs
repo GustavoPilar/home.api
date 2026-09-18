@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using home.api.Utilities;
 
 namespace home.api.Application.Entities.DTOs.Base
 {
@@ -12,7 +12,7 @@ namespace home.api.Application.Entities.DTOs.Base
         /// <summary>
         /// Identificador da entidade que será alterada
         /// </summary>
-        [Required(ErrorMessage = "Campo obrigatório.")]
+        [NotEmptyGuid(ErrorMessage = "Campo obrigatório.")]
         public Guid Id { get; set; }
 
         #endregion
